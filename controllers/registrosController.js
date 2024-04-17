@@ -1,8 +1,24 @@
-// Importación del módulo jwt para la generación de tokens de autenticación
+// Importa la biblioteca nodemailer para enviar correos electrónicos
+const nodemailer = require('nodemailer');
+// Importa la biblioteca jsonwebtoken para generar y verificar tokens JWT
 const jwt = require('jsonwebtoken');
+
+require('dotenv').config(); // Cargar variables de entorno desde .env
+
 
 // Importación del modelo Registro desde "../models/registrosModel"
 const Registro = require("../models/registrosModel");
+
+// Crea un transportador de correo electrónico
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD
+    }
+});
+
+
 
 /**
  * Controlador para crear un nuevo registro de usuario
@@ -21,6 +37,7 @@ const registroPost = async (req, res) => {
     apellido,
     pais,
     fechaNacimiento,
+    telefono // Nuevo campo requerido
   } = req.body;
 
   // Validación de campos requeridos
@@ -31,7 +48,8 @@ const registroPost = async (req, res) => {
     !pin ||
     !nombre ||
     !apellido ||
-    !fechaNacimiento
+    !fechaNacimiento ||
+    !telefono // Asegúrate de incluir el número telefónico como requerido
   ) {
     return res
       .status(400)
@@ -51,17 +69,18 @@ const registroPost = async (req, res) => {
     return res.status(400).json({ error: "Las contraseñas no coinciden." });
   }
 
-  // Resto del código para guardar el registro
-  let usuario = await Registro.findOne({ correoElectronico });
-
-  if (usuario) {
-    return res
-      .status(400)
-      .json({ error: "El correo electrónico ya está registrado." });
-  }
+  // Generación de un token de verificación JWT
+  const verificationToken = jwt.sign({ correoElectronico }, 'secreto', { expiresIn: '1d' });
 
   // Guardar el registro en la base de datos
-  usuario = new Registro(req.body);
+  const usuario = new Registro(req.body);
+
+  // Envío de correo electrónico de verificación con el token JWT
+  sendVerificationEmail(correoElectronico, verificationToken);
+
+  // Actualizar el estado de verificación del usuario a false
+  usuario.verificado = false;
+
   await usuario
     .save()
     .then((registro) => {
@@ -81,6 +100,30 @@ const registroPost = async (req, res) => {
 };
 
 /**
+ * Función para enviar correo electrónico de verificación
+ *
+ * @param {string} userEmail Correo electrónico del usuario
+ * @param {string} verificationToken Token JWT de verificación
+ */
+const sendVerificationEmail = (userEmail, verificationToken) => {
+  const mailOptions = {
+    from: process.env.EMAIL_SENDER,
+    to: userEmail,
+    subject: 'Verifica tu correo electrónico',
+    text: `Por favor haz clic en el siguiente enlace para verificar tu correo electrónico: http://localhost:3000/api/verify?token=${verificationToken}`
+  };
+
+  transporter.sendMail(mailOptions, function(error, info){
+    if (error) {
+      console.error('Error al enviar el correo electrónico de verificación:', error);
+    } else {
+      console.log('Correo electrónico de verificación enviado exitosamente:', info.response);
+    }
+  });
+};
+
+
+/**
  * Controlador para autenticar un usuario mediante correo electrónico y contraseña
  *
  * @param {*} req
@@ -90,10 +133,10 @@ const login = async (req, res) => {
   const { correoElectronico, contraseña } = req.body;
   
   try {
-      // Buscar el usuario en la base de datos por su correo electrónico
-      const usuario = await Registro.findOne({ correoElectronico });
+      // Buscar el usuario en la base de datos por su correo electrónico y estado verificado
+      const usuario = await Registro.findOne({ correoElectronico, verificado: true });
   
-      // Verificar si el usuario existe
+      // Verificar si el usuario existe y está verificado
       if (!usuario) {
           return res.status(401).json({ error: "Usuario o contraseña inválida." });
       }
@@ -139,6 +182,40 @@ const loginUsuarios = async (req, res) => {
   }
 };
 
+/**
+ * Controlador para verificar el correo electrónico mediante el token JWT
+ *
+ * @param {*} req
+ * @param {*} res
+ */
+const verificarCorreo = async (req, res) => {
+  const { token } = req.query;
+
+  try {
+    // Verificar el token JWT
+    const decoded = jwt.verify(token, 'secreto');
+    const { correoElectronico } = decoded;
+
+    // Buscar el usuario en la base de datos por su correo electrónico
+    const usuario = await Registro.findOneAndUpdate(
+      { correoElectronico },
+      { verificado: true }, // Actualizar el estado de verificación del usuario a true
+      { new: true } // Devolver el documento actualizado
+    );
+
+    if (!usuario) {
+      return res.status(404).json({ error: "Usuario no encontrado." });
+    }
+
+    // Enviar una respuesta JSON indicando el éxito de la verificación, el mensaje y la URL de inicio de sesión
+    res.json({ success: true, message: "Correo verificado correctamente. Puedes iniciar sesión ahora.", redirectTo: '/login.html' });
+  } catch (error) {
+    console.error("Error al verificar correo electrónico:", error);
+    res.status(500).json({ error: "Hubo un error al verificar el correo electrónico." });
+  }
+};
+
+
 // Función para calcular la edad a partir de la fecha de nacimiento
 function calcularEdad(fechaNacimiento) {
   const hoy = new Date();
@@ -151,9 +228,11 @@ function calcularEdad(fechaNacimiento) {
   return edad;
 }
 
+
 // Exportación de los controladores
 module.exports = {
   registroPost,
   login,
-  loginUsuarios
+  loginUsuarios,
+  verificarCorreo
 };

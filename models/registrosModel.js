@@ -7,7 +7,9 @@ const registroSchema = new mongoose.Schema({
   pin: { type: Number, required: true },
   correoElectronico: { type: String, required: true, unique: true },
   pais: { type: String },
-  fechaNacimiento: { type: Date, required: true }
+  fechaNacimiento: { type: Date, required: true },
+  telefono: { type: Number, required: true }, // Agregamos el campo para el número telefónico
+  verificado: { type: Boolean, default: false } // Campo para el estado de verificación
 });
 
 module.exports = mongoose.model('Registro', registroSchema);

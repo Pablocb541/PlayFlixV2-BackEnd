@@ -37,7 +37,8 @@ const {
 const { 
     registroPost,
     login,
-    loginUsuarios
+    loginUsuarios,
+    verificarCorreo // Importar el controlador para verificar correo
  } = require("./controllers/registrosController.js");
 
 // Middleware para analizar el cuerpo de las solicitudes en formato JSON
@@ -57,11 +58,17 @@ app.put('/api/videos/:id', videoUpdate);
 app.delete('/api/videos', videoDelete);
 
 // Rutas de Registro
-app.post("/api/registros", registroPost);
+app.post("/api/registros", registroPost); // Ruta para registrar un nuevo usuario
+
+// Ruta para verificar el correo electrónico mediante el token JWT
+app.get("/api/verify", verificarCorreo); // Ruta para verificar el correo electrónico después del registro
 
 // Rutas de Login
-app.post("/api/login",login);
-app.post("/api/loginUsuarios",loginUsuarios);
+app.post("/api/login", login); // Ruta para iniciar sesión con correo electrónico y contraseña
+app.post("/api/loginUsuarios", loginUsuarios); // Ruta para iniciar sesión con PIN
+
+// Ruta para verificar el PIN
+app.post("/api/loginPin", loginPin); // Ruta para verificar el PIN durante la autenticación de 2 pasos
 
 // Rutas de perfiles
 app.post('/api/perfiles',usuarioRestringidoPost);
@@ -69,10 +76,8 @@ app.get('/api/perfiles', usuarioRestringidoGet);
 app.put('/api/perfiles/:id',usuarioRestringidoUpdate); // Modificado para incluir el ID en la ruta
 app.delete('/api/perfiles',usuarioRestringidoDelete);
 
-// Ruta para verificar el PIN
-app.post('/api/loginPin', loginPin);
-
 // Iniciar el servidor en el puerto especificado
 app.listen(PORT, () => console.log(`Aplicación iniciando en el puerto ${PORT} !`));
 
 module.exports = app;
+ 
