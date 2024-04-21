@@ -9,7 +9,8 @@ const registroSchema = new mongoose.Schema({
   pais: { type: String },
   fechaNacimiento: { type: Date, required: true },
   telefono: { type: Number, required: true }, // Agregamos el campo para el número telefónico
-  verificado: { type: Boolean, default: false } // Campo para el estado de verificación
+  verificado: { type: Boolean, default: false }, // Campo para el estado de verificación
+  codigoUnico: { type: String, required: true }
 });
 
 module.exports = mongoose.model('Registro', registroSchema);
