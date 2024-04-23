@@ -1,4 +1,4 @@
-//playlitsControlador
+//playlistsController.js
 
 const Playlist = require('../models/playlistsModel');
 const Video = require('../models/videosModel');
