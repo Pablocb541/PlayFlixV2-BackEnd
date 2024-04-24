@@ -9,7 +9,6 @@ const jwt = require('jsonwebtoken');
 
 const phoneUtil = require('libphonenumber-js');
 
-
 require('dotenv').config(); // Cargar variables de entorno desde .env
 
 // Importación del modelo Registro desde "../models/registrosModel"
@@ -28,64 +27,32 @@ const transporter = nodemailer.createTransport({
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 /**
+ * Función middleware para verificar el token JWT
+ */
+function verifyToken(req, res, next) {
+  const token = req.headers.authorization?.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, 'secreto');
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(403).json({ error: 'Invalid token' });
+  }
+}
+
+/**
  * Controlador para crear un nuevo registro de usuario
  *
  * @param {*} req
  * @param {*} res
  */
 const registroPost = async (req, res) => {
-  // Extracción de datos del cuerpo de la solicitud
-  const {
-    correoElectronico,
-    contraseña,
-    repetirContraseña,
-    pin,
-    nombre,
-    apellido,
-    pais,
-    fechaNacimiento,
-    telefono
-  } = req.body;
-
-  // Validación de campos requeridos
-  // ... (código de validación existente)
-
-  // Generación de un código único para el mensaje de texto
-  const codigoUnico = generarCodigoUnico();
-
-  try {
-    // Guardar el registro en la base de datos
-    const usuario = new Registro({ 
-      ...req.body, // Spread de los otros campos
-      codigoUnico // Agregar el código único
-    });
-
-    // Enviar mensaje de texto con el código único
-    await enviarMensajeTexto(nombre, telefono, codigoUnico);
-
-    // Generar un token de verificación JWT
-    const verificationToken = jwt.sign({ correoElectronico, codigoUnico }, 'secreto', { expiresIn: '1d' });
-
-    // Actualizar el estado de verificación del usuario a false
-    usuario.verificado = false;
-
-    await usuario.save();
-
-    // Enviar correo electrónico de verificación con el token JWT
-    sendVerificationEmail(correoElectronico, verificationToken);
-
-    res.status(201); // CREATED
-    res.header({
-      location: `/api/registros/?id=${usuario.id}`,
-    });
-    res.json(usuario);
-  } catch (err) {
-    res.status(400);
-    console.error("Error al enviar mensaje de texto:", err);
-    res.json({
-      error: "Hubo un error al enviar el código de verificación. Revisa el número de teléfono e inténtalo de nuevo."
-    });
-  }
+  // ... (código existente)
 };
 
 /**
@@ -96,28 +63,7 @@ const registroPost = async (req, res) => {
  * @param {string} codigoUnico Código único generado
  */
 async function enviarMensajeTexto(nombreUsuario, numeroTelefono, codigoUnico) {
-  try {
-    // Parsear el número de teléfono
-    const parsedNumber = phoneUtil.parsePhoneNumber(numeroTelefono, 'CR'); // Indicar el código de país: 'CR' para Costa Rica
-
-    // Validar que el número de teléfono sea válido
-    if (parsedNumber.isValid()) {
-      // Formatear el número de teléfono al formato E.164
-      const formattedNumber = parsedNumber.format('E.164');
-
-      await twilioClient.messages.create({
-        body: `Hola ${nombreUsuario}, este es tu código de verificación de Pablo.com: ${codigoUnico}`,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: formattedNumber
-      });
-      console.log('Mensaje de texto enviado exitosamente.');
-    } else {
-      throw new Error('Número de teléfono inválido');
-    }
-  } catch (error) {
-    console.error('Error al enviar mensaje de texto:', error);
-    throw error;
-  }
+  // ... (código existente)
 }
 
 /**
@@ -126,7 +72,7 @@ async function enviarMensajeTexto(nombreUsuario, numeroTelefono, codigoUnico) {
  * @returns {string} Código único de 6 dígitos
  */
 function generarCodigoUnico() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  // ... (código existente)
 }
 
 /**
@@ -136,20 +82,7 @@ function generarCodigoUnico() {
  * @param {string} verificationToken Token JWT de verificación
  */
 const sendVerificationEmail = (userEmail, verificationToken) => {
-  const mailOptions = {
-    from: process.env.EMAIL_SENDER,
-    to: userEmail,
-    subject: 'Verifica tu correo electrónico',
-    text: `Por favor haz clic en el siguiente enlace para verificar tu correo electrónico: http://localhost:3000/api/verify?token=${verificationToken}`
-  };
-
-  transporter.sendMail(mailOptions, function(error, info){
-    if (error) {
-      console.error('Error al enviar el correo electrónico de verificación:', error);
-    } else {
-      console.log('Correo electrónico de verificación enviado exitosamente:', info.response);
-    }
-  });
+  // ... (código existente)
 };
 
 /**
@@ -181,7 +114,7 @@ const login = async (req, res) => {
       }
       
       // Si todo es válido, generar un token de autenticación
-      const token = jwt.sign({ userId: usuario._id }, 'secreto', { expiresIn: '1h' });
+      const token = jwt.sign({ userId: usuario._id }, 'secreto', { expiresIn: '6d' });
 
       // Devolver el token junto con el ID y el pin del usuario en la respuesta
       return res.status(200).json({ message: "Inicio de sesión exitoso.", token, id: usuario._id, pin: usuario.pin });
@@ -249,10 +182,21 @@ const verificarCorreo = async (req, res) => {
   }
 };
 
+// Ruta protegida de ejemplo
+const protectedRoute = (req, res) => {
+  // Acceder a los datos del usuario autenticado
+  const userId = req.user.userId;
+
+  // Realizar alguna lógica protegida aquí
+  res.json({ message: `Acceso concedido para el usuario ${userId}` });
+};
+
 // Exportación de los controladores
 module.exports = {
   registroPost,
   login,
   loginUsuarios,
-  verificarCorreo
-};
+  verificarCorreo,
+  protectedRoute,
+  verifyToken
+}
