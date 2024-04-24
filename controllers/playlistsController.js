@@ -1,7 +1,7 @@
 //playlistsController.js
-
 const Playlist = require('../models/playlistsModel');
 const Video = require('../models/videosModel');
+const Usuario = require('../models/registrosModel');
 
 const getPlaylists = async (req, res) => {
   try {
@@ -112,11 +112,25 @@ const getVideosInPlaylist = async (req, res) => {
   }
 };
 
+
+
+const obtenerUsuarios = async (req, res) => {
+  try {
+    const usuarios = await Usuario.find();
+    res.json(usuarios);
+  } catch (error) {
+    console.error('Error al obtener los usuarios:', error);
+    res.status(500).json({ error: 'Hubo un error al obtener los usuarios' });
+  }
+};
+
+
 module.exports = {
   getPlaylists,
   createPlaylist,
   updatePlaylist,
   deletePlaylist,
   addVideoToPlaylist,
-  getVideosInPlaylist
+  getVideosInPlaylist,
+  obtenerUsuarios
 };
