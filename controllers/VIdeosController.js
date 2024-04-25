@@ -7,6 +7,18 @@ const videoPost = async (req, res) => {
   const { name, youtubeUrl, userId, playlistId, descripcion } = req.body;
 
   try {
+    // Validar si el nombre del video ya existe
+    const existingVideoName = await Video.findOne({ name });
+    if (existingVideoName) {
+      return res.status(400).json({ error: 'El nombre del video ya existe' });
+    }
+
+    // Validar si el enlace de YouTube ya existe
+    const existingVideoUrl = await Video.findOne({ youtubeUrl });
+    if (existingVideoUrl) {
+      return res.status(400).json({ error: 'El enlace de YouTube ya existe' });
+    }
+
     // Crear el video
     const newVideo = new Video({ name, youtubeUrl, userId, descripcion });
     const savedVideo = await newVideo.save();
@@ -25,6 +37,12 @@ const videoPost = async (req, res) => {
         });
         await newPlaylist.save();
       } else {
+        // Validar si el nombre del video ya existe en la playlist
+        const existingVideoInPlaylist = playlist.videos.find(video => video.name === name);
+        if (existingVideoInPlaylist) {
+          return res.status(400).json({ error: 'El nombre del video ya existe en la playlist' });
+        }
+
         // Si la playlist existe, agregar el video a su lista de videos
         playlist.videos.push(savedVideo._id);
         await playlist.save();
@@ -98,4 +116,9 @@ const videoUpdate = async (req, res) => {
   }
 };
 
-module.exports = { videoPost, videoGet, videoDelete, videoUpdate };
+module.exports =
+ { videoPost,
+   videoGet, 
+   videoDelete, 
+   videoUpdate
+   };

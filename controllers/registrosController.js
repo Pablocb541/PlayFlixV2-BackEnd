@@ -66,9 +66,45 @@ const registroPost = async (req, res) => {
     telefono
   } = req.body;
 
-  // Validación de campos requeridos
-  // ... (código de validación existente)
+ // Validación de campos requeridos
+ if (
+  !correoElectronico ||
+  !contrasena ||
+  !repetircontrasena ||
+  !pin ||
+  !nombre ||
+  !apellido ||
+  !fechaNacimiento
+) {
+  return res
+    .status(400)
+    .json({ error: "Todos los campos marcados con (*) son requeridos." });
+}
 
+
+ // Validación de la edad del usuario
+  const edadUsuario = calcularEdad(fechaNacimiento);
+  if (edadUsuario < 18) {
+    return res
+      .status(400)
+      .json({ error: "Debes tener al menos 18 años para registrarte." });
+  }
+
+
+// Validación de contrasena y repetición de contrasena
+if (contrasena !== repetircontrasena) {
+  return res.status(400).json({ error: "Las contrasenas no coinciden." });
+}
+
+// Resto del código para guardar el registro
+let usuario = await Registro.findOne({ correoElectronico });
+
+if (usuario) {
+  return res
+    .status(400)
+    .json({ error: "El correo electrónico ya está registrado." });
+}
+  
   // Generación de un código único para el mensaje de texto
   const codigoUnico = generarCodigoUnico();
 
@@ -264,6 +300,20 @@ const verificarCorreo = async (req, res) => {
     res.status(500).json({ error: "Hubo un error al verificar el correo electrónico." });
   }
 };
+
+
+
+// Función para calcular la edad a partir de la fecha de nacimiento
+function calcularEdad(fechaNacimiento) {
+  const hoy = new Date();
+  const cumpleaños = new Date(fechaNacimiento);
+  let edad = hoy.getFullYear() - cumpleaños.getFullYear();
+  const mes = hoy.getMonth() - cumpleaños.getMonth();
+  if (mes < 0 || (mes === 0 && hoy.getDate() < cumpleaños.getDate())) {
+    edad--;
+  }
+  return edad;
+}
 
 // Exportación de los controladores
 module.exports = {

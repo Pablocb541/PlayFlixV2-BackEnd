@@ -1,3 +1,5 @@
+// playlistsController.js
+
 const Playlist = require('../models/playlistsModel');
 const Video = require('../models/videosModel');
 const Usuario = require('../models/registrosModel');
@@ -23,6 +25,12 @@ const createPlaylist = async (req, res) => {
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
+    // Validar si el nombre de la playlist ya existe
+    const existingPlaylist = await Playlist.findOne({ name });
+    if (existingPlaylist) {
+      return res.status(400).json({ error: 'El nombre de la playlist ya existe' });
+    }
+
     const newPlaylist = new Playlist({ name, associatedProfiles, videos: [] });
     const savedPlaylist = await newPlaylist.save();
     res.status(201).json(savedPlaylist);
@@ -44,6 +52,11 @@ const updatePlaylist = async (req, res) => {
     }
 
     if (name) {
+      // Validar si el nombre de la playlist ya existe (excepto para la playlist actual)
+      const existingPlaylist = await Playlist.findOne({ name, _id: { $ne: id } });
+      if (existingPlaylist) {
+        return res.status(400).json({ error: 'El nombre de la playlist ya existe' });
+      }
       playlist.name = name;
     }
 
