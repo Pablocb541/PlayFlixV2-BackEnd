@@ -20,7 +20,7 @@ mongoose.connect(mongoString, { useNewUrlParser: true, useFindAndModify: false, 
 const { usuarioRestringidoPost, usuarioRestringidoGet, usuarioRestringidoUpdate, usuarioRestringidoDelete, loginPin } = require('./controllers/perfilesController.js');
 const { videoPost, videoGet, videoDelete, videoUpdate } = require('./controllers/VIdeosController');
 const { registroPost, login, loginUsuarios, verificarCorreo, verifyToken } = require("./controllers/registrosController.js");
-const { getPlaylists, createPlaylist, updatePlaylist, deletePlaylist, addVideoToPlaylist, getVideosInPlaylist, obtenerUsuarios } = require('./controllers/playlistsController');
+const { getPlaylists, createPlaylist, updatePlaylist, deletePlaylist, addVideoToPlaylist, getVideosInPlaylist, obtenerUsuarios, searchVideos } = require('./controllers/playlistsController');
 
 // Middleware para analizar el cuerpo de las solicitudes en formato JSON
 const bodyParser = require("body-parser");
@@ -63,6 +63,9 @@ app.delete('/api/playlists/:id', deletePlaylist);
 app.put('/api/playlists/:id/videos', addVideoToPlaylist);
 app.get('/api/playlists/:id/videos', getVideosInPlaylist);
 
+// Ruta para búsqueda de Videos
+app.get('/api/videos/search', searchVideos);
+
 // Ruta para obtener usuarios
 app.get('/api/usuarios', obtenerUsuarios);
 
@@ -71,4 +74,4 @@ app.post("/api/loginPin", loginPin);
 
 // Iniciar el servidor en el puerto especificado
 app.listen(PORT, () => console.log(`Aplicación iniciando en el puerto ${PORT} !`));
-module.exports = app; 
+module.exports = app;

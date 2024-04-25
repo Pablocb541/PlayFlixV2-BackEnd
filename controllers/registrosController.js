@@ -258,7 +258,7 @@ const verificarCorreo = async (req, res) => {
     }
 
     // Enviar una respuesta JSON indicando el éxito de la verificación, el mensaje y la URL de inicio de sesión
-    res.json({ success: true, message: "Correo y código verificados correctamente. Puedes iniciar sesión ahora.", redirectTo: '/login.html' });
+    res.redirect('http://127.0.0.1:5500/FrontEnd/Inicio/login.html');
   } catch (error) {
     console.error("Error al verificar correo electrónico:", error);
     res.status(500).json({ error: "Hubo un error al verificar el correo electrónico." });

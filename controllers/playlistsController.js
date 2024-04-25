@@ -129,6 +129,24 @@ const obtenerUsuarios = async (req, res) => {
   }
 };
 
+const searchVideos = async (req, res) => {
+  const searchText = req.query.searchText.toLowerCase();
+  try {
+    // Aquí debes implementar la lógica para buscar videos en la base de datos
+    // Por ejemplo:
+    const videos = await Video.find({
+      $or: [
+        { name: { $regex: searchText, $options: 'i' } },
+        { descripcion: { $regex: searchText, $options: 'i' } }
+      ]
+    });
+    res.json(videos);
+  } catch (error) {
+    console.error('Error al buscar videos:', error);
+    res.status(500).json({ error: 'Hubo un error al buscar videos' });
+  }
+};
+
 module.exports = {
   getPlaylists,
   createPlaylist,
@@ -136,5 +154,6 @@ module.exports = {
   deletePlaylist,
   addVideoToPlaylist,
   getVideosInPlaylist,
-  obtenerUsuarios
+  obtenerUsuarios,
+  searchVideos
 };
