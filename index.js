@@ -40,19 +40,8 @@ app.get("/api/verify", verificarCorreo);
 app.post("/api/login", login);
 app.post("/api/loginUsuarios", loginUsuarios);
 
-// Ruta para verificar el PIN durante la autenticación de 2 pasos
-app.post("/api/loginPin", loginPin);
-
-// Aplicar el middleware verifyToken a todas las rutas restantes excepto /api/registros
-app.use((req, res, next) => {
-  if (req.path === "/api/registros") {
-    // Si la solicitud es para la ruta de registro, pasar al siguiente middleware
-    next();
-  } else {
-    // Para todas las demás rutas, verificar el token de autenticación
-    verifyToken(req, res, next);
-  }
-});
+// Aplicar el middleware verifyToken a todas las rutas restantes
+app.use(verifyToken);
 
 // Rutas de Videos
 app.post('/api/videos', videoPost);
@@ -77,6 +66,9 @@ app.get('/api/playlists/:id/videos', getVideosInPlaylist);
 // Ruta para obtener usuarios
 app.get('/api/usuarios', obtenerUsuarios);
 
+// Ruta para verificar el PIN durante la autenticación de 2 pasos
+app.post("/api/loginPin", loginPin);
+
 // Iniciar el servidor en el puerto especificado
 app.listen(PORT, () => console.log(`Aplicación iniciando en el puerto ${PORT} !`));
-module.exports = app;
+module.exports = app; 

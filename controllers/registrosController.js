@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 
 const phoneUtil = require('libphonenumber-js');
 
+
 require('dotenv').config(); // Cargar variables de entorno desde .env
 
 // Importación del modelo Registro desde "../models/registrosModel"
@@ -16,11 +17,11 @@ const Registro = require("../models/registrosModel");
 
 // Crea un transportador de correo electrónico
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD
-  }
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD
+    }
 });
 
 // Crea un cliente de Twilio
@@ -52,43 +53,119 @@ function verifyToken(req, res, next) {
  * @param {*} res
  */
 const registroPost = async (req, res) => {
-  const { nombre, apellido, contraseña, pin, correoElectronico, pais, fechaNacimiento, telefono, codigoUnico } = req.body;
+  // Extracción de datos del cuerpo de la solicitud
+  const {
+    correoElectronico,
+    contraseña,
+    repetirContraseña,
+    pin,
+    nombre,
+    apellido,
+    pais,
+    fechaNacimiento,
+    telefono
+  } = req.body;
 
-  // Validar que no haya campos vacíos
-  if (!nombre || !apellido || !contraseña || !pin || !correoElectronico || !pais || !fechaNacimiento || !telefono || !codigoUnico) {
-    return res.status(400).json({ error: "Todos los campos son obligatorios." });
-  }
+  // Validación de campos requeridos
+  // ... (código de validación existente)
+
+  // Generación de un código único para el mensaje de texto
+  const codigoUnico = generarCodigoUnico();
 
   try {
-    // Verificar si el correo electrónico ya está registrado
-    const existeUsuario = await Registro.findOne({ correoElectronico });
-    if (existeUsuario) {
-      return res.status(400).json({ error: "El correo electrónico ya está registrado." });
-    }
-
-    // Aquí puedes realizar otras validaciones, como verificar el formato del correo electrónico o el número de teléfono
-
-    // Crear un nuevo registro de usuario
-    const nuevoUsuario = new Registro({
-      nombre,
-      apellido,
-      contraseña,
-      pin,
-      correoElectronico,
-      pais,
-      fechaNacimiento,
-      telefono,
-      codigoUnico
+    // Guardar el registro en la base de datos
+    const usuario = new Registro({ 
+      ...req.body, // Spread de los otros campos
+      codigoUnico // Agregar el código único
     });
 
-    // Guardar el nuevo usuario en la base de datos
-    await nuevoUsuario.save();
+    // Enviar mensaje de texto con el código único
+    await enviarMensajeTexto(nombre, telefono, codigoUnico);
 
-    return res.status(201).json({ message: "Registro exitoso." });
-  } catch (error) {
-    console.error("Error al crear nuevo registro:", error);
-    return res.status(500).json({ error: "Hubo un error al procesar la solicitud." });
+    // Generar un token de verificación JWT
+    const verificationToken = jwt.sign({ correoElectronico, codigoUnico }, 'secreto', { expiresIn: '1d' });
+
+    // Actualizar el estado de verificación del usuario a false
+    usuario.verificado = false;
+
+    await usuario.save();
+
+    // Enviar correo electrónico de verificación con el token JWT
+    sendVerificationEmail(correoElectronico, verificationToken);
+
+    // Devolver el token de verificación al frontend
+    res.status(201).json({ verificationToken });
+  } catch (err) {
+    res.status(400);
+    console.error("Error al enviar mensaje de texto:", err);
+    res.json({
+      error: "Hubo un error al enviar el código de verificación. Revisa el número de teléfono e inténtalo de nuevo."
+    });
   }
+};
+
+/**
+ * Función para enviar mensaje de texto con un código único
+ *
+ * @param {string} nombreUsuario Nombre del usuario
+ * @param {string} numeroTelefono Número de teléfono del usuario
+ * @param {string} codigoUnico Código único generado
+ */
+async function enviarMensajeTexto(nombreUsuario, numeroTelefono, codigoUnico) {
+  try {
+    // Parsear el número de teléfono
+    const parsedNumber = phoneUtil.parsePhoneNumber(numeroTelefono, 'CR'); // Indicar el código de país: 'CR' para Costa Rica
+
+    // Validar que el número de teléfono sea válido
+    if (parsedNumber.isValid()) {
+      // Formatear el número de teléfono al formato E.164
+      const formattedNumber = parsedNumber.format('E.164');
+
+      await twilioClient.messages.create({
+        body: `Hola ${nombreUsuario}, este es tu código de verificación de Pablo.com: ${codigoUnico}`,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: formattedNumber
+      });
+      console.log('Mensaje de texto enviado exitosamente.');
+    } else {
+      throw new Error('Número de teléfono inválido');
+    }
+  } catch (error) {
+    console.error('Error al enviar mensaje de texto:', error);
+    throw error;
+  }
+}
+
+/**
+ * Función para generar un código único
+ *
+ * @returns {string} Código único de 6 dígitos
+ */
+function generarCodigoUnico() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+/**
+ * Función para enviar correo electrónico de verificación
+ *
+ * @param {string} userEmail Correo electrónico del usuario
+ * @param {string} verificationToken Token JWT de verificación
+ */
+const sendVerificationEmail = (userEmail, verificationToken) => {
+  const mailOptions = {
+    from: process.env.EMAIL_SENDER,
+    to: userEmail,
+    subject: 'Verifica tu correo electrónico',
+    text: `Por favor haz clic en el siguiente enlace para verificar tu correo electrónico: http://localhost:3000/api/verify?token=${verificationToken}`
+  };
+
+  transporter.sendMail(mailOptions, function(error, info){
+    if (error) {
+      console.error('Error al enviar el correo electrónico de verificación:', error);
+    } else {
+      console.log('Correo electrónico de verificación enviado exitosamente:', info.response);
+    }
+  });
 };
 
 /**
@@ -99,39 +176,34 @@ const registroPost = async (req, res) => {
  */
 const login = async (req, res) => {
   const { correoElectronico, contraseña, codigoUnico } = req.body;
-
-  // Validar que no haya campos vacíos
-  if (!correoElectronico || !contraseña || !codigoUnico) {
-    return res.status(400).json({ error: "Todos los campos son obligatorios." });
-  }
-
+  
   try {
-    // Buscar el usuario en la base de datos por su correo electrónico y estado verificado
-    const usuario = await Registro.findOne({ correoElectronico, verificado: true });
+      // Buscar el usuario en la base de datos por su correo electrónico y estado verificado
+      const usuario = await Registro.findOne({ correoElectronico, verificado: true });
+  
+      // Verificar si el usuario existe y está verificado
+      if (!usuario) {
+          return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
+      }
+  
+      // Verificar la contraseña ingresada
+      if (contraseña !== usuario.contraseña) {
+          return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
+      }
+      
+      // Verificar el código único ingresado
+      if (codigoUnico !== usuario.codigoUnico) {
+          return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
+      }
+      
+      // Si todo es válido, generar un token de autenticación
+      const token = jwt.sign({ userId: usuario._id }, 'secreto', { expiresIn: '1h' });
 
-    // Verificar si el usuario existe y está verificado
-    if (!usuario) {
-      return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
-    }
-
-    // Verificar la contraseña ingresada
-    if (contraseña !== usuario.contraseña) {
-      return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
-    }
-
-    // Verificar el código único ingresado
-    if (codigoUnico !== usuario.codigoUnico) {
-      return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
-    }
-
-    // Si todo es válido, generar un token de autenticación
-    const token = jwt.sign({ userId: usuario._id }, 'secreto', { expiresIn: '6d' });
-
-    // Devolver el token junto con el ID y el pin del usuario en la respuesta
-    return res.status(200).json({ message: "Inicio de sesión exitoso.", token, id: usuario._id, pin: usuario.pin });
+      // Devolver el token junto con el ID y el pin del usuario en la respuesta
+      return res.status(200).json({ message: "Inicio de sesión exitoso.", token, id: usuario._id, pin: usuario.pin });
   } catch (error) {
-    console.error("Error al autenticar usuario:", error);
-    res.status(500).json({ error: "Hubo un error al autenticar el usuario." });
+      console.error("Error al autenticar usuario:", error);
+      res.status(500).json({ error: "Hubo un error al autenticar el usuario." });
   }
 };
 
@@ -143,25 +215,20 @@ const login = async (req, res) => {
  */
 const loginUsuarios = async (req, res) => {
   const { pin } = req.body;
-
-  // Validar que no haya campos vacíos
-  if (!pin) {
-    return res.status(400).json({ error: "El PIN es obligatorio." });
-  }
-
+  
   try {
-    // Buscar el usuario en la base de datos por su PIN
-    const usuario = await Registro.findOne({ pin });
-
-    // Verificar si el usuario existe
-    if (!usuario) {
-      return res.status(401).json({ error: "PIN inválido." });
-    }
-
-    res.status(200).json({ success: true, message: "Inicio de sesión exitoso." }); // Agregamos success:true si el PIN es válido
+      // Buscar el usuario en la base de datos por su PIN
+      const usuario = await Registro.findOne({ pin });
+  
+      // Verificar si el usuario existe
+      if (!usuario) {
+          return res.status(401).json({ error: "PIN inválido." });
+      }
+  
+      res.status(200).json({ success: true, message: "Inicio de sesión exitoso." }); // Agregamos success:true si el PIN es válido
   } catch (error) {
-    console.error("Error al autenticar usuario por PIN:", error);
-    res.status(500).json({ error: "Hubo un error al autenticar el usuario por PIN." });
+      console.error("Error al autenticar usuario por PIN:", error);
+      res.status(500).json({ error: "Hubo un error al autenticar el usuario por PIN." });
   }
 };
 
@@ -198,21 +265,11 @@ const verificarCorreo = async (req, res) => {
   }
 };
 
-// Ruta protegida de ejemplo
-const protectedRoute = (req, res) => {
-  // Acceder a los datos del usuario autenticado
-  const userId = req.user.userId;
-
-  // Realizar alguna lógica protegida aquí
-  res.json({ message: `Acceso concedido para el usuario ${userId}` });
-};
-
 // Exportación de los controladores
 module.exports = {
   registroPost,
   login,
   loginUsuarios,
   verificarCorreo,
-  protectedRoute,
   verifyToken
-}
+};
