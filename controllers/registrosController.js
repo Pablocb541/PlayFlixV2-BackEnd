@@ -56,8 +56,8 @@ const registroPost = async (req, res) => {
   // Extracción de datos del cuerpo de la solicitud
   const {
     correoElectronico,
-    contraseña,
-    repetirContraseña,
+    contrasena,
+    repetircontrasena,
     pin,
     nombre,
     apellido,
@@ -169,13 +169,13 @@ const sendVerificationEmail = (userEmail, verificationToken) => {
 };
 
 /**
- * Controlador para autenticar un usuario mediante correo electrónico, contraseña y código único
+ * Controlador para autenticar un usuario mediante correo electrónico, contrasena y código único
  *
  * @param {*} req
  * @param {*} res
  */
 const login = async (req, res) => {
-  const { correoElectronico, contraseña, codigoUnico } = req.body;
+  const { correoElectronico, contrasena, codigoUnico } = req.body;
   
   try {
       // Buscar el usuario en la base de datos por su correo electrónico y estado verificado
@@ -183,17 +183,17 @@ const login = async (req, res) => {
   
       // Verificar si el usuario existe y está verificado
       if (!usuario) {
-          return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
+          return res.status(401).json({ error: "Usuario o contrasena/código inválidos." });
       }
   
-      // Verificar la contraseña ingresada
-      if (contraseña !== usuario.contraseña) {
-          return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
+      // Verificar la contrasena ingresada
+      if (contrasena !== usuario.contrasena) {
+          return res.status(401).json({ error: "Usuario o contrasena/código inválidos." });
       }
       
       // Verificar el código único ingresado
       if (codigoUnico !== usuario.codigoUnico) {
-          return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
+          return res.status(401).json({ error: "Usuario o contrasena/código inválidos." });
       }
       
       // Si todo es válido, generar un token de autenticación
