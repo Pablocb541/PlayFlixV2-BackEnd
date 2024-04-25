@@ -1,5 +1,3 @@
-// playlistsController.js
-
 const Playlist = require('../models/playlistsModel');
 const Video = require('../models/videosModel');
 const Usuario = require('../models/registrosModel');
@@ -13,7 +11,7 @@ const getPlaylists = async (req, res) => {
     res.json(playlists);
   } catch (error) {
     console.error('Error al obtener las playlists:', error);
-    res.status(500).json({ error: 'Hubo un error al obtener las playlists' });
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -36,7 +34,7 @@ const createPlaylist = async (req, res) => {
     res.status(201).json(savedPlaylist);
   } catch (error) {
     console.error('Error al crear la playlist:', error);
-    res.status(500).json({ error: 'Hubo un error al crear la playlist' });
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -72,7 +70,7 @@ const updatePlaylist = async (req, res) => {
     res.json(updatedPlaylist);
   } catch (error) {
     console.error('Error al actualizar la playlist:', error);
-    res.status(500).json({ error: 'Hubo un error al actualizar la playlist' });
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -91,7 +89,7 @@ const deletePlaylist = async (req, res) => {
     res.json(deletedPlaylist);
   } catch (error) {
     console.error('Error al eliminar la playlist:', error);
-    res.status(500).json({ error: 'Hubo un error al eliminar la playlist' });
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -114,7 +112,7 @@ const addVideoToPlaylist = async (req, res) => {
     res.json(updatedPlaylist);
   } catch (error) {
     console.error('Error al agregar video a la playlist:', error);
-    res.status(500).json({ error: 'Hubo un error al agregar video a la playlist' });
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -128,7 +126,7 @@ const getVideosInPlaylist = async (req, res) => {
     res.json(playlist.videos);
   } catch (error) {
     console.error('Error al obtener los videos de la playlist:', error);
-    res.status(500).json({ error: 'Hubo un error al obtener los videos de la playlist' });
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -138,7 +136,7 @@ const obtenerUsuarios = async (req, res) => {
     res.json(usuarios);
   } catch (error) {
     console.error('Error al obtener los usuarios:', error);
-    res.status(500).json({ error: 'Hubo un error al obtener los usuarios' });
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -156,7 +154,7 @@ const searchVideos = async (req, res) => {
     res.json(videos);
   } catch (error) {
     console.error('Error al buscar videos:', error);
-    res.status(500).json({ error: 'Hubo un error al buscar videos' });
+    res.status(500).json({ error: error.message });
   }
 };
 

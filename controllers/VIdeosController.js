@@ -1,5 +1,3 @@
-// videosController.js
-
 const Video = require('../models/videosModel');
 const Playlist = require('../models/playlistsModel');
 
@@ -116,9 +114,9 @@ const videoUpdate = async (req, res) => {
   }
 };
 
-module.exports =
- { videoPost,
-   videoGet, 
-   videoDelete, 
-   videoUpdate
-   };
+module.exports = {
+  videoPost,
+  videoGet,
+  videoDelete,
+  videoUpdate
+};
