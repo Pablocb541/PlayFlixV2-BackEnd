@@ -1,4 +1,3 @@
-//playlistsController.js
 const Playlist = require('../models/playlistsModel');
 const Video = require('../models/videosModel');
 const Usuario = require('../models/registrosModel');
@@ -20,6 +19,10 @@ const createPlaylist = async (req, res) => {
   const { name, associatedProfiles } = req.body;
 
   try {
+    if (!name || !associatedProfiles) {
+      return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    }
+
     const newPlaylist = new Playlist({ name, associatedProfiles, videos: [] });
     const savedPlaylist = await newPlaylist.save();
     res.status(201).json(savedPlaylist);
@@ -83,6 +86,10 @@ const addVideoToPlaylist = async (req, res) => {
   const { playlistId, videoId } = req.body;
 
   try {
+    if (!playlistId || !videoId) {
+      return res.status(400).json({ error: 'Playlist ID y Video ID son requeridos' });
+    }
+
     const playlist = await Playlist.findById(playlistId);
 
     if (!playlist) {
@@ -112,8 +119,6 @@ const getVideosInPlaylist = async (req, res) => {
   }
 };
 
-
-
 const obtenerUsuarios = async (req, res) => {
   try {
     const usuarios = await Usuario.find();
@@ -123,7 +128,6 @@ const obtenerUsuarios = async (req, res) => {
     res.status(500).json({ error: 'Hubo un error al obtener los usuarios' });
   }
 };
-
 
 module.exports = {
   getPlaylists,

@@ -1,6 +1,3 @@
-
-//perfilesController.js
-
 // Importación del módulo bcrypt para el cifrado de contraseñas
 const bcrypt = require('bcrypt');
 

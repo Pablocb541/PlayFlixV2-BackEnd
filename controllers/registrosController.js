@@ -16,11 +16,11 @@ const Registro = require("../models/registrosModel");
 
 // Crea un transportador de correo electrónico
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD
-    }
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
+  }
 });
 
 // Crea un cliente de Twilio
@@ -52,37 +52,43 @@ function verifyToken(req, res, next) {
  * @param {*} res
  */
 const registroPost = async (req, res) => {
-  // ... (código existente)
-};
+  const { nombre, apellido, contraseña, pin, correoElectronico, pais, fechaNacimiento, telefono, codigoUnico } = req.body;
 
-/**
- * Función para enviar mensaje de texto con un código único
- *
- * @param {string} nombreUsuario Nombre del usuario
- * @param {string} numeroTelefono Número de teléfono del usuario
- * @param {string} codigoUnico Código único generado
- */
-async function enviarMensajeTexto(nombreUsuario, numeroTelefono, codigoUnico) {
-  // ... (código existente)
-}
+  // Validar que no haya campos vacíos
+  if (!nombre || !apellido || !contraseña || !pin || !correoElectronico || !pais || !fechaNacimiento || !telefono || !codigoUnico) {
+    return res.status(400).json({ error: "Todos los campos son obligatorios." });
+  }
 
-/**
- * Función para generar un código único
- *
- * @returns {string} Código único de 6 dígitos
- */
-function generarCodigoUnico() {
-  // ... (código existente)
-}
+  try {
+    // Verificar si el correo electrónico ya está registrado
+    const existeUsuario = await Registro.findOne({ correoElectronico });
+    if (existeUsuario) {
+      return res.status(400).json({ error: "El correo electrónico ya está registrado." });
+    }
 
-/**
- * Función para enviar correo electrónico de verificación
- *
- * @param {string} userEmail Correo electrónico del usuario
- * @param {string} verificationToken Token JWT de verificación
- */
-const sendVerificationEmail = (userEmail, verificationToken) => {
-  // ... (código existente)
+    // Aquí puedes realizar otras validaciones, como verificar el formato del correo electrónico o el número de teléfono
+
+    // Crear un nuevo registro de usuario
+    const nuevoUsuario = new Registro({
+      nombre,
+      apellido,
+      contraseña,
+      pin,
+      correoElectronico,
+      pais,
+      fechaNacimiento,
+      telefono,
+      codigoUnico
+    });
+
+    // Guardar el nuevo usuario en la base de datos
+    await nuevoUsuario.save();
+
+    return res.status(201).json({ message: "Registro exitoso." });
+  } catch (error) {
+    console.error("Error al crear nuevo registro:", error);
+    return res.status(500).json({ error: "Hubo un error al procesar la solicitud." });
+  }
 };
 
 /**
@@ -93,34 +99,39 @@ const sendVerificationEmail = (userEmail, verificationToken) => {
  */
 const login = async (req, res) => {
   const { correoElectronico, contraseña, codigoUnico } = req.body;
-  
-  try {
-      // Buscar el usuario en la base de datos por su correo electrónico y estado verificado
-      const usuario = await Registro.findOne({ correoElectronico, verificado: true });
-  
-      // Verificar si el usuario existe y está verificado
-      if (!usuario) {
-          return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
-      }
-  
-      // Verificar la contraseña ingresada
-      if (contraseña !== usuario.contraseña) {
-          return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
-      }
-      
-      // Verificar el código único ingresado
-      if (codigoUnico !== usuario.codigoUnico) {
-          return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
-      }
-      
-      // Si todo es válido, generar un token de autenticación
-      const token = jwt.sign({ userId: usuario._id }, 'secreto', { expiresIn: '6d' });
 
-      // Devolver el token junto con el ID y el pin del usuario en la respuesta
-      return res.status(200).json({ message: "Inicio de sesión exitoso.", token, id: usuario._id, pin: usuario.pin });
+  // Validar que no haya campos vacíos
+  if (!correoElectronico || !contraseña || !codigoUnico) {
+    return res.status(400).json({ error: "Todos los campos son obligatorios." });
+  }
+
+  try {
+    // Buscar el usuario en la base de datos por su correo electrónico y estado verificado
+    const usuario = await Registro.findOne({ correoElectronico, verificado: true });
+
+    // Verificar si el usuario existe y está verificado
+    if (!usuario) {
+      return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
+    }
+
+    // Verificar la contraseña ingresada
+    if (contraseña !== usuario.contraseña) {
+      return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
+    }
+
+    // Verificar el código único ingresado
+    if (codigoUnico !== usuario.codigoUnico) {
+      return res.status(401).json({ error: "Usuario o contraseña/código inválidos." });
+    }
+
+    // Si todo es válido, generar un token de autenticación
+    const token = jwt.sign({ userId: usuario._id }, 'secreto', { expiresIn: '6d' });
+
+    // Devolver el token junto con el ID y el pin del usuario en la respuesta
+    return res.status(200).json({ message: "Inicio de sesión exitoso.", token, id: usuario._id, pin: usuario.pin });
   } catch (error) {
-      console.error("Error al autenticar usuario:", error);
-      res.status(500).json({ error: "Hubo un error al autenticar el usuario." });
+    console.error("Error al autenticar usuario:", error);
+    res.status(500).json({ error: "Hubo un error al autenticar el usuario." });
   }
 };
 
@@ -132,20 +143,25 @@ const login = async (req, res) => {
  */
 const loginUsuarios = async (req, res) => {
   const { pin } = req.body;
-  
+
+  // Validar que no haya campos vacíos
+  if (!pin) {
+    return res.status(400).json({ error: "El PIN es obligatorio." });
+  }
+
   try {
-      // Buscar el usuario en la base de datos por su PIN
-      const usuario = await Registro.findOne({ pin });
-  
-      // Verificar si el usuario existe
-      if (!usuario) {
-          return res.status(401).json({ error: "PIN inválido." });
-      }
-  
-      res.status(200).json({ success: true, message: "Inicio de sesión exitoso." }); // Agregamos success:true si el PIN es válido
+    // Buscar el usuario en la base de datos por su PIN
+    const usuario = await Registro.findOne({ pin });
+
+    // Verificar si el usuario existe
+    if (!usuario) {
+      return res.status(401).json({ error: "PIN inválido." });
+    }
+
+    res.status(200).json({ success: true, message: "Inicio de sesión exitoso." }); // Agregamos success:true si el PIN es válido
   } catch (error) {
-      console.error("Error al autenticar usuario por PIN:", error);
-      res.status(500).json({ error: "Hubo un error al autenticar el usuario por PIN." });
+    console.error("Error al autenticar usuario por PIN:", error);
+    res.status(500).json({ error: "Hubo un error al autenticar el usuario por PIN." });
   }
 };
 
